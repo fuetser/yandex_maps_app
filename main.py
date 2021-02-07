@@ -40,16 +40,33 @@ class MainWindow(QtWidgets.QWidget):
         image.loadFromData(image_bytes)
         self.map_lable.setPixmap(image)
 
-    def change_zoom(self, delta):
-        if 1 <= self.current_zoom + delta <= 17:
-            self.current_zoom += delta
-            self.update_map()
-
     def keyPressEvent(self, event):
         if (key := event.key()) == Qt.Key_PageUp:
             self.change_zoom(+1)
         elif key == Qt.Key_PageDown:
             self.change_zoom(-1)
+        elif key == Qt.Key_Left:
+            self.move_center(-self.move_delta, 0)
+        elif key == Qt.Key_Right:
+            self.move_center(+self.move_delta, 0)
+        elif key == Qt.Key_Up:
+            self.move_center(0, +self.move_delta / 2)
+        elif key == Qt.Key_Down:
+            self.move_center(0, -self.move_delta / 2)
+
+    def change_zoom(self, delta):
+        if 1 <= self.current_zoom + delta <= 17:
+            self.current_zoom += delta
+            self.update_map()
+
+    @property
+    def move_delta(self):
+        return 0.001 * (18 - self.current_zoom) ** 2
+
+    def move_center(self, x_shift, y_shift):
+        self.current_longitude += x_shift
+        self.current_latitude += y_shift
+        self.update_map()
 
 
 if __name__ == '__main__':
