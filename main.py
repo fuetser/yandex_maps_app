@@ -112,9 +112,14 @@ class MainWindow(QtWidgets.QWidget):
             self.current_mark, self.current_address, \
                 self.current_postal_code = self.parse_geocode(geocode)
             self.address_field.setText(self.format_address())
-            if self.current_mark is not None:
-                self.current_longitude, self.current_latitude = self.current_mark
-            self.update_map()
+            if from_mark:
+                self.update_map()
+                if self.current_mark is not None:
+                    self.current_longitude, self.current_latitude = self.current_mark
+            else:
+                if self.current_mark is not None:
+                    self.current_longitude, self.current_latitude = self.current_mark
+                self.update_map()
 
     def parse_geocode(self, geocode):
         try:
