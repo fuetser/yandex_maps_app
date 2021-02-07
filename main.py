@@ -5,6 +5,13 @@ from PyQt5.QtCore import Qt
 import requests
 
 
+MAP_LAYOUT_TYPES = {
+    "схема": "map",
+    "спутник": "sat",
+    "гибрид": "sat,skl"
+}
+
+
 class MainWindow(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
@@ -18,12 +25,24 @@ class MainWindow(QtWidgets.QWidget):
     def setup_ui(self):
         self.setWindowTitle("Yandex Maps")
         self.main_layout = QtWidgets.QVBoxLayout(self)
+
+        self.map_layout_box = QtWidgets.QComboBox()
+        self.map_layout_box.textActivated.connect(
+            self.change_map_layout_type)
+        self.map_layout_box.addItems(MAP_LAYOUT_TYPES.keys())
+        self.main_layout.addWidget(self.map_layout_box)
+
         self.map_lable = QtWidgets.QLabel(self)
         self.main_layout.addWidget(self.map_lable)
         self.update_map()
 
+    def change_map_layout_type(self, map_layout_type):
+        self.map_layout_type = MAP_LAYOUT_TYPES[map_layout_type]
+        self.update_map()
+
     def update_map(self):
         self.set_map(self.get_map())
+        self.setFocus()
 
     def get_map(self):
         payload = {
