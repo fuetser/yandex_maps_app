@@ -1,3 +1,4 @@
+import math
 import sys
 
 from PyQt5 import QtWidgets, QtGui
@@ -101,8 +102,10 @@ class MainWindow(QtWidgets.QWidget):
         image.loadFromData(image_bytes)
         self.map_lable.setPixmap(image)
 
-    def search_place(self):
+    def search_place(self, from_mark=False):
         geocode = self.geocode_field.text().strip()
+        if from_mark:
+            geocode = ",".join(map(str, self.current_mark))
         if geocode:
             self.current_mark, self.current_address, \
                 self.current_postal_code = self.parse_geocode(geocode)
@@ -148,6 +151,23 @@ class MainWindow(QtWidgets.QWidget):
             self.move_center(0, +self.move_delta / 2)
         elif key == Qt.Key_Down:
             self.move_center(0, -self.move_delta / 2)
+
+    def mousePressEvent(self, event):
+        if (key := event.button()) == Qt.LeftButton:
+            self.mark_mouse_click(event.pos().x() - self.map_lable.x(),
+                                  event.pos().y() - self.map_lable.y())
+            self.search_place(from_mark=True)
+        elif key == Qt.RightButton:
+            print(2)
+
+    def mark_mouse_click(self, x, y):
+        center_x = self.map_lable.width() // 2
+        center_y = self.map_lable.height() // 2
+        x_off = (x - center_x) * 0.44 * (360 / 2**self.current_zoom)
+        y_off = (y - center_y) * 0.44 * (180 / 2**self.current_zoom)
+        self.current_mark = (self.current_longitude + x_off / 111,
+                             self.current_latitude + y_off / 111 * -1)
+        self.update_map()
 
     def change_zoom(self, delta):
         if 1 <= self.current_zoom + delta <= 17:
