@@ -18,8 +18,11 @@ class MainWindow(QtWidgets.QWidget):
         self.current_zoom = 12  # [1; 17]
         self.current_longitude = 37.91
         self.current_latitude = 59.13
+        self.current_mark = (37.91, 59.13)
         self.map_layout_type = "map"
-        self.server = "http://static-maps.yandex.ru/1.x/"
+        self.static_server = "http://static-maps.yandex.ru/1.x/"
+        self.geocode_server = "http://geocode-maps.yandex.ru/1.x/"
+        self.apikey = "40d1649f-0493-4b70-98ba-98533de7710b"
         self.setup_ui()
 
     def setup_ui(self):
@@ -36,6 +39,16 @@ class MainWindow(QtWidgets.QWidget):
         self.main_layout.addWidget(self.map_lable)
         self.update_map()
 
+        button = QtWidgets.QPushButton("Искать")
+        button.clicked.connect(self.search_place)
+
+        self.geocode_field = QtWidgets.QLineEdit()
+
+        search_layout = QtWidgets.QHBoxLayout()
+        search_layout.addWidget(button)
+        search_layout.addWidget(self.geocode_field)
+        self.main_layout.addLayout(search_layout)
+
     def change_map_layout_type(self, map_layout_type):
         self.map_layout_type = MAP_LAYOUT_TYPES[map_layout_type]
         self.update_map()
@@ -50,14 +63,34 @@ class MainWindow(QtWidgets.QWidget):
             "l": self.map_layout_type,
             "z": str(self.current_zoom),
         }
-        responce = requests.get(self.server, params=payload)
-        if responce.ok:
-            return responce.content
+        response = requests.get(self.static_server, params=payload)
+        if response.ok:
+            return response.content
 
     def set_map(self, image_bytes):
         image = QtGui.QPixmap()
         image.loadFromData(image_bytes)
         self.map_lable.setPixmap(image)
+
+    def search_place(self):
+        geocode = self.geocode_field.text().strip()
+        if geocode:
+            self.current_mark = self.get_geocode_pos(geocode)
+            self.current_longitude, self.current_latitude = self.current_mark
+            self.update_map()
+
+    def get_geocode_pos(self, geocode):
+        try:
+            payload = {
+                "apikey": self.apikey,
+                "geocode": geocode,
+                "format": "json",
+            }
+            response = requests.get(self.geocode_server, params=payload).json()
+            return map(float, response["response"]["GeoObjectCollection"
+                ]["featureMember"][0]["GeoObject"]["Point"]["pos"].split())
+        except:
+            return self.current_longitude, self.current_latitude
 
     def keyPressEvent(self, event):
         if (key := event.key()) == Qt.Key_PageUp:
