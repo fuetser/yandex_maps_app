@@ -1,3 +1,4 @@
+import math
 import sys
 from PyQt5 import QtWidgets, QtGui
 from PyQt5.QtCore import Qt
@@ -99,7 +100,7 @@ class MainWindow(QtWidgets.QWidget):
                                             ["featureMember"][0]["GeoObject"]
                                             ["Point"]["pos"].split()))
         except Exception:
-            return self.current_longitude, self.current_latitude
+            return self.current_mark
 
     def keyPressEvent(self, event):
         if (key := event.key()) == Qt.Key_PageUp:
@@ -114,6 +115,22 @@ class MainWindow(QtWidgets.QWidget):
             self.move_center(0, +self.move_delta / 2)
         elif key == Qt.Key_Down:
             self.move_center(0, -self.move_delta / 2)
+
+    def mousePressEvent(self, event):
+        if (key := event.button()) == Qt.LeftButton:
+            self.mark_mouse_click(event.pos().x() - self.map_lable.x(),
+                                  event.pos().y() - self.map_lable.y())
+        elif key == Qt.RightButton:
+            print(2)
+
+    def mark_mouse_click(self, x, y):
+        center_x = self.map_lable.width() // 2
+        center_y = self.map_lable.height() // 2
+        x_off = (x - center_x) * 0.44 * (360 / 2**self.current_zoom)
+        y_off = (y - center_y) * 0.44 * (180 / 2**self.current_zoom)
+        self.current_mark = (self.current_longitude + x_off / 111,
+                             self.current_latitude + y_off / 111 * -1)
+        self.update_map()
 
     def change_zoom(self, delta):
         if 1 <= self.current_zoom + delta <= 17:
