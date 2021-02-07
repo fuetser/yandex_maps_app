@@ -1,7 +1,7 @@
+import sys
 from PyQt5 import QtWidgets, QtGui
 from PyQt5.QtCore import Qt
 import requests
-import sys
 
 
 MAP_LAYOUT_TYPES = {
@@ -38,13 +38,16 @@ class MainWindow(QtWidgets.QWidget):
         self.main_layout.addWidget(self.map_lable)
         self.update_map()
 
-        button = QtWidgets.QPushButton("Искать")
-        button.clicked.connect(self.search_place)
+        search_button = QtWidgets.QPushButton("Искать", self)
+        search_button.clicked.connect(self.search_place)
+        reset_search_button = QtWidgets.QPushButton("Сброс", self)
+        reset_search_button.clicked.connect(self.remove_mark)
 
         self.geocode_field = QtWidgets.QLineEdit(self)
 
         search_layout = QtWidgets.QHBoxLayout()
-        search_layout.addWidget(button)
+        search_layout.addWidget(search_button)
+        search_layout.addWidget(reset_search_button)
         search_layout.addWidget(self.geocode_field)
         self.main_layout.addLayout(search_layout)
 
@@ -55,6 +58,10 @@ class MainWindow(QtWidgets.QWidget):
     def update_map(self):
         self.set_map(self.get_map(self.current_mark))
         self.setFocus()
+
+    def remove_mark(self):
+        self.current_mark = None
+        self.update_map()
 
     def get_map(self, mark):
         payload = {
