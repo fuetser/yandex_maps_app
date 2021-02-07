@@ -1,4 +1,5 @@
 import sys
+
 from PyQt5 import QtWidgets, QtGui
 from PyQt5.QtCore import Qt
 import requests
@@ -51,6 +52,10 @@ class MainWindow(QtWidgets.QWidget):
         search_layout.addWidget(self.geocode_field)
         self.main_layout.addLayout(search_layout)
 
+        self.adress_field = QtWidgets.QLineEdit()
+        self.adress_field.setEnabled(False)
+        self.main_layout.addWidget(self.adress_field)
+
     def change_map_layout_type(self, map_layout_type):
         self.map_layout_type = MAP_LAYOUT_TYPES[map_layout_type]
         self.update_map()
@@ -61,6 +66,7 @@ class MainWindow(QtWidgets.QWidget):
 
     def remove_mark(self):
         self.current_mark = None
+        self.adress_field.clear()
         self.update_map()
 
     def get_map(self, mark):
@@ -70,7 +76,8 @@ class MainWindow(QtWidgets.QWidget):
             "z": str(self.current_zoom),
         }
         if mark is not None:
-            payload["pt"] = f"{','.join(map(str, mark))},pm2dom"
+            payload["pt"] = "{},{},pm2dom".format(*mark)
+
         response = requests.get(self.static_server, params=payload)
         if response.ok:
             return response.content
@@ -83,11 +90,13 @@ class MainWindow(QtWidgets.QWidget):
     def search_place(self):
         geocode = self.geocode_field.text().strip()
         if geocode:
-            self.current_mark = self.get_geocode_pos(geocode)
-            self.current_longitude, self.current_latitude = self.current_mark
+            self.current_mark, adress = self.parse_geocode(geocode)
+            self.adress_field.setText(adress)
+            if self.current_mark is not None:
+                self.current_longitude, self.current_latitude = self.current_mark
             self.update_map()
 
-    def get_geocode_pos(self, geocode):
+    def parse_geocode(self, geocode):
         try:
             payload = {
                 "apikey": self.apikey,
@@ -95,11 +104,14 @@ class MainWindow(QtWidgets.QWidget):
                 "format": "json",
             }
             response = requests.get(self.geocode_server, params=payload).json()
-            return tuple(map(float, response["response"]["GeoObjectCollection"]
-                                            ["featureMember"][0]["GeoObject"]
-                                            ["Point"]["pos"].split()))
+            geobject = response["response"][
+                "GeoObjectCollection"]["featureMember"][0]["GeoObject"]
+            pos = tuple(map(float, geobject["Point"]["pos"].split()))
+            adress = geobject["metaDataProperty"]["GeocoderMetaData"]["text"]
+            return pos, adress
+
         except Exception:
-            return self.current_longitude, self.current_latitude
+            return self.current_mark, "Не найдено"
 
     def keyPressEvent(self, event):
         if (key := event.key()) == Qt.Key_PageUp:
