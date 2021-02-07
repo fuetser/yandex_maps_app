@@ -1,14 +1,13 @@
-import sys
-
 from PyQt5 import QtWidgets, QtGui
 from PyQt5.QtCore import Qt
 import requests
+import sys
 
 
 MAP_LAYOUT_TYPES = {
-    "схема": "map",
-    "спутник": "sat",
-    "гибрид": "sat,skl"
+    "Схема": "map",
+    "Спутник": "sat",
+    "Гибрид": "sat,skl"
 }
 
 
@@ -18,7 +17,7 @@ class MainWindow(QtWidgets.QWidget):
         self.current_zoom = 12  # [1; 17]
         self.current_longitude = 37.91
         self.current_latitude = 59.13
-        self.current_mark = (37.91, 59.13)
+        self.current_mark = None
         self.map_layout_type = "map"
         self.static_server = "http://static-maps.yandex.ru/1.x/"
         self.geocode_server = "http://geocode-maps.yandex.ru/1.x/"
@@ -29,7 +28,7 @@ class MainWindow(QtWidgets.QWidget):
         self.setWindowTitle("Yandex Maps")
         self.main_layout = QtWidgets.QVBoxLayout(self)
 
-        self.map_layout_box = QtWidgets.QComboBox()
+        self.map_layout_box = QtWidgets.QComboBox(self)
         self.map_layout_box.textActivated.connect(
             self.change_map_layout_type)
         self.map_layout_box.addItems(MAP_LAYOUT_TYPES.keys())
@@ -42,7 +41,7 @@ class MainWindow(QtWidgets.QWidget):
         button = QtWidgets.QPushButton("Искать")
         button.clicked.connect(self.search_place)
 
-        self.geocode_field = QtWidgets.QLineEdit()
+        self.geocode_field = QtWidgets.QLineEdit(self)
 
         search_layout = QtWidgets.QHBoxLayout()
         search_layout.addWidget(button)
@@ -54,15 +53,17 @@ class MainWindow(QtWidgets.QWidget):
         self.update_map()
 
     def update_map(self):
-        self.set_map(self.get_map())
+        self.set_map(self.get_map(self.current_mark))
         self.setFocus()
 
-    def get_map(self):
+    def get_map(self, mark):
         payload = {
             "ll": f"{self.current_longitude},{self.current_latitude}",
             "l": self.map_layout_type,
             "z": str(self.current_zoom),
         }
+        if mark is not None:
+            payload["pt"] = f"{','.join(map(str, mark))},pm2dom"
         response = requests.get(self.static_server, params=payload)
         if response.ok:
             return response.content
@@ -87,9 +88,10 @@ class MainWindow(QtWidgets.QWidget):
                 "format": "json",
             }
             response = requests.get(self.geocode_server, params=payload).json()
-            return map(float, response["response"]["GeoObjectCollection"
-                ]["featureMember"][0]["GeoObject"]["Point"]["pos"].split())
-        except:
+            return tuple(map(float, response["response"]["GeoObjectCollection"]
+                                            ["featureMember"][0]["GeoObject"]
+                                            ["Point"]["pos"].split()))
+        except Exception:
             return self.current_longitude, self.current_latitude
 
     def keyPressEvent(self, event):
