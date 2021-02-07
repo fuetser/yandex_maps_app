@@ -64,9 +64,13 @@ class MainWindow(QtWidgets.QWidget):
         return 0.001 * (18 - self.current_zoom) ** 2
 
     def move_center(self, x_shift, y_shift):
-        self.current_longitude += x_shift
-        self.current_latitude += y_shift
-        self.update_map()
+        if (
+            -180 <= self.current_longitude + x_shift <= 180 and
+            -90 <= self.current_latitude + y_shift <= 90
+        ):
+            self.current_longitude += x_shift
+            self.current_latitude += y_shift
+            self.update_map()
 
 
 if __name__ == '__main__':
