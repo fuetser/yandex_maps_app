@@ -1,4 +1,5 @@
 from PyQt5 import QtWidgets, QtGui
+from PyQt5.QtCore import Qt
 import requests
 import sys
 
@@ -35,6 +36,17 @@ class MainWindow(QtWidgets.QWidget):
         image = QtGui.QPixmap()
         image.loadFromData(bytes_io)
         self.map_lable.setPixmap(image)
+
+    def change_zoom(self, delta):
+        if 1 <= self.current_zoom + delta <= 17:
+            self.current_zoom += delta
+            self.set_map(self.get_map())
+
+    def keyPressEvent(self, event):
+        if (key := event.key()) == Qt.Key_PageUp:
+            self.change_zoom(1)
+        elif key == Qt.Key_PageDown:
+            self.change_zoom(-1)
 
 
 if __name__ == '__main__':
