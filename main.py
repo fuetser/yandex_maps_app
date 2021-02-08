@@ -26,7 +26,11 @@ class MainWindow(QtWidgets.QWidget):
         self.map_layout_type = "map"
         self.static_server = "http://static-maps.yandex.ru/1.x/"
         self.geocode_server = "http://geocode-maps.yandex.ru/1.x/"
+        self.orgs_server = "https://search-maps.yandex.ru/v1/"
         self.apikey = "40d1649f-0493-4b70-98ba-98533de7710b"
+        self.orgs_apikey = "dda3ddba-c9ea-4ead-9010-f43fbc15c6e3"
+        self.organizations = ("магазин", "аптека", "банк", "кафе", "ресторан",
+                              "споривный зал", "авто", "стадион", "рынок")
         self.setup_ui()
 
     def setup_ui(self):
@@ -57,9 +61,9 @@ class MainWindow(QtWidgets.QWidget):
         self.main_layout.addLayout(search_layout)
 
         self.address_field = QtWidgets.QLineEdit()
-        self.address_field.setEnabled(False)
+        self.address_field.setReadOnly(True)
 
-        self.postal_code_button = QtWidgets.QRadioButton("Отображать почтовый адрес")
+        self.postal_code_button = QtWidgets.QRadioButton("Индекс")
         self.postal_code_button.toggled.connect(self.postal_button_change)
 
         address_layout = QtWidgets.QHBoxLayout()
@@ -112,14 +116,9 @@ class MainWindow(QtWidgets.QWidget):
             self.current_mark, self.current_address, \
                 self.current_postal_code = self.parse_geocode(geocode)
             self.address_field.setText(self.format_address())
-            if from_mark:
-                self.update_map()
-                if self.current_mark is not None:
-                    self.current_longitude, self.current_latitude = self.current_mark
-            else:
-                if self.current_mark is not None:
-                    self.current_longitude, self.current_latitude = self.current_mark
-                self.update_map()
+            if self.current_mark is not None and not from_mark:
+                self.current_longitude, self.current_latitude = self.current_mark
+            self.update_map()
 
     def parse_geocode(self, geocode):
         try:
@@ -160,21 +159,52 @@ class MainWindow(QtWidgets.QWidget):
             self.move_center(0, -self.move_delta / 2)
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
+        if (button := event.button()) == Qt.LeftButton:
             self.mark_mouse_click(
                 event.pos().x() - self.map_lable.x(),
                 event.pos().y() - self.map_lable.y())
             self.search_place(from_mark=True)
+        elif button == Qt.RightButton:
+            self.find_organizations(
+                event.pos().x() - self.map_lable.x(),
+                event.pos().y() - self.map_lable.y())
 
-    def mark_mouse_click(self, x, y):
+    def find_click_coords(self, x, y):
         center_x = self.map_lable.width() // 2
         center_y = self.map_lable.height() // 2
-        x_shift = (x - center_x) * 0.44 * (360 / 2 ** self.current_zoom)
-        y_shift = (y - center_y) * 0.44 * (180 / 2 ** self.current_zoom)
-        self.current_mark = (
-            self.current_longitude + x_shift / 111,
-            self.current_latitude - y_shift / 111)
+        fov_x = (360 / 2 ** self.current_zoom)
+        fov_y = (180 / 2 ** self.current_zoom)
+        x_shift = (x - center_x) * 0.44 * fov_x / 111
+        y_shift = (y - center_y) * 0.44 * fov_y / 111
+        return (self.current_longitude + x_shift,
+                self.current_latitude - y_shift)
+
+    def mark_mouse_click(self, x, y):
+        self.current_mark = self.find_click_coords(x, y)
         self.update_map()
+
+    def find_organizations(self, x, y):
+        lon, lat = self.find_click_coords(x, y)
+        for org in self.organizations:
+            payload = {
+                "apikey": self.orgs_apikey,
+                "text": org,
+                "ll": f"{lon},{lat}",
+                "lang": "ru_RU",
+                "type": "biz",
+                "spn": "0.0009,0.0009",
+                "rspn": "1"
+            }
+            response = requests.get(self.orgs_server, params=payload)
+            if response.ok and len((data := response.json())["features"]):
+                self.parse_organizations(data)
+                break
+
+    def parse_organizations(self, data):
+        props = data["features"][0]["properties"]
+        self.address_field.setText(f"{props['name']}, {props['description']}")
+        self.current_address = f"{props['name']}, {props['description']}"
+        self.current_postal_code = None
 
     def change_zoom(self, delta):
         if 1 <= self.current_zoom + delta <= 17:
