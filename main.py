@@ -37,11 +37,27 @@ class MainWindow(QtWidgets.QWidget):
         self.setWindowTitle("Yandex Maps")
         self.main_layout = QtWidgets.QVBoxLayout(self)
 
-        self.map_layout_box = QtWidgets.QComboBox(self)
-        self.map_layout_box.textActivated.connect(
-            self.change_map_layout_type)
-        self.map_layout_box.addItems(MAP_LAYOUT_TYPES.keys())
-        self.main_layout.addWidget(self.map_layout_box)
+        # self.map_layout_box = QtWidgets.QComboBox(self)
+        # self.map_layout_box.textActivated.connect(
+        #     self.change_map_layout_type)
+        # self.map_layout_box.addItems(MAP_LAYOUT_TYPES.keys())
+        # self.main_layout.addWidget(self.map_layout_box)
+
+        self.buttons = [
+            QtWidgets.QRadioButton(key)
+            for key in MAP_LAYOUT_TYPES.keys()
+        ]
+        self.buttons[0].setChecked(True)
+        self.button_group = QtWidgets.QButtonGroup()
+        self.button_group.buttonClicked.connect(self.change_map_layout_type)
+
+        button_layout = QtWidgets.QHBoxLayout()
+        button_layout.addWidget(QtWidgets.QLabel("Тип карты"))
+
+        for button in self.buttons:
+            self.button_group.addButton(button)
+            button_layout.addWidget(button)
+        self.main_layout.addLayout(button_layout)
 
         self.map_lable = QtWidgets.QLabel(self)
         self.main_layout.addWidget(self.map_lable)
@@ -63,8 +79,8 @@ class MainWindow(QtWidgets.QWidget):
         self.address_field = QtWidgets.QLineEdit()
         self.address_field.setReadOnly(True)
 
-        self.postal_code_button = QtWidgets.QRadioButton("Индекс")
-        self.postal_code_button.toggled.connect(self.postal_button_change)
+        self.postal_code_button = QtWidgets.QCheckBox("Индекс")
+        self.postal_code_button.stateChanged.connect(self.postal_button_change)
 
         address_layout = QtWidgets.QHBoxLayout()
         address_layout.addWidget(self.address_field)
@@ -72,7 +88,7 @@ class MainWindow(QtWidgets.QWidget):
         self.main_layout.addLayout(address_layout)
 
     def change_map_layout_type(self, map_layout_type):
-        self.map_layout_type = MAP_LAYOUT_TYPES[map_layout_type]
+        self.map_layout_type = MAP_LAYOUT_TYPES[map_layout_type.text()]
         self.update_map()
 
     def update_map(self):
